@@ -1,0 +1,7 @@
+{
+  "annotation_processors": [
+    {"group_id": "org.projectlombok", "artifact_id": "lombok"},
+    {"group_id": "org.mapstruct", "artifact_id": "mapstruct-processor"},
+    {"group_id": "org.projectlombok", "artifact_id": "lombok-mapstruct-binding"}
+  ]
+}

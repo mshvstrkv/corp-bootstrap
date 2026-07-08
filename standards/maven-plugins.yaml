@@ -1,0 +1,21 @@
+{
+  "compiler_plugin": {
+    "group_id": "org.apache.maven.plugins",
+    "artifact_id": "maven-compiler-plugin",
+    "version": "3.13.0",
+    "configuration": {
+      "release": "${maven.compiler.release}"
+    }
+  },
+  "deploy_image_profile": {
+    "id": "deploy-image",
+    "plugin": {
+      "group_id": "com.google.cloud.tools",
+      "artifact_id": "jib-maven-plugin"
+    },
+    "configuration": {
+      "from_image": "${jib.from.image}",
+      "to_image": "${jib.to.image}"
+    }
+  }
+}

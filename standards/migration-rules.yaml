@@ -1,0 +1,56 @@
+{
+  "root_pom": {
+    "packaging": "pom",
+    "group_id": "ru.sber.sbe.services",
+    "artifact_id_source": "existing",
+    "version": "1.0.0-SNAPSHOT",
+    "required_modules": ["__APP_MODULE__", "distributive"],
+    "properties": {
+      "java.version": "17",
+      "project.build.sourceEncoding": "UTF-8",
+      "project.reporting.outputEncoding": "UTF-8",
+      "maven.compiler.release": "17",
+      "sonar.coverage.jacoco.xmlReportPaths": "${project.basedir}/target/site/jacoco/jacoco.xml"
+    },
+    "plugin_repositories": [
+      {
+        "id": "sber-nexus-public",
+        "url_property": "corp.nexus.public.url",
+        "url": "https://nexus.example/repository/maven-public/"
+      }
+    ],
+    "dependency_management": [
+      {"group_id": "io.grpc", "artifact_id": "grpc-bom", "version": "1.64.0", "type": "pom", "scope": "import"},
+      {"group_id": "org.springframework.boot", "artifact_id": "spring-boot-dependencies", "version": "3.3.0", "type": "pom", "scope": "import"}
+    ]
+  },
+  "distributive": {
+    "module_dir": "distributive",
+    "pom_template": "distributive-pom.xml",
+    "assembly_template": "distributive.xml",
+    "assembly_path": "assembly/distributive.xml",
+    "ci_artifact_prefix": "sbe",
+    "nexus_url_property": "corp.nexus.distributive.url"
+  },
+  "logger": {
+    "field_name": "log",
+    "logger_type": "Logger",
+    "logger_factory_method": "LoggerFactory.getLogger",
+    "logger_imports": [
+      "org.slf4j.Logger",
+      "org.slf4j.LoggerFactory"
+    ],
+    "annotation_import": "lombok.extern.slf4j.Slf4j",
+    "annotation": "Slf4j",
+    "field_pattern": "private static final Logger log = LoggerFactory.getLogger(...);"
+  },
+  "out_of_scope": [
+    "business logic",
+    "REST API",
+    "DTOs",
+    "SQL",
+    "Liquibase",
+    "Flyway",
+    "application business configuration"
+  ]
+}

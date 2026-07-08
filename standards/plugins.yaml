@@ -1,0 +1,11 @@
+{
+  "plugins": [
+    {"name": "git", "module": "plugins.git", "enabled": true},
+    {"name": "root-pom", "module": "plugins.root_pom", "enabled": true},
+    {"name": "app-pom", "module": "plugins.app_pom", "enabled": true},
+    {"name": "distributive", "module": "plugins.distributive", "enabled": true},
+    {"name": "cleanup", "module": "plugins.cleanup", "enabled": true},
+    {"name": "logger", "module": "plugins.logger", "enabled": true},
+    {"name": "finalize", "module": "plugins.finalize", "enabled": true}
+  ]
+}

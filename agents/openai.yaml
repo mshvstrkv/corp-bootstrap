@@ -1,0 +1,6 @@
+interface:
+  display_name: "Corp Bootstrap"
+  short_description: "Migrate and update corporate Spring Boot services"
+  default_prompt: "Use $corp-bootstrap to analyze, migrate, apply maintenance tasks, or update my corporate Spring Boot branch from GitVerse."
+policy:
+  allow_implicit_invocation: true

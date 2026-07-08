@@ -1,0 +1,8 @@
+{
+  "standard_name": "Corporate Platform Standard",
+  "latest_standard_version": "2026.06",
+  "default_project_standard_version": "2025.11",
+  "app_module": "service-app",
+  "corporate_branch_suffix": "-corp",
+  "commit_message": "Corporate migration"
+}
