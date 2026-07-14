@@ -57,11 +57,19 @@ The update path:
 - pushes only with `--push`;
 - never clones, mirrors all branches, creates a corporate branch, runs full migration, guesses the source branch, or force-pushes.
 
+The moduleize path:
+
+- operates on an existing local single-module Maven Spring Boot repository;
+- converts root `pom.xml` plus root `src/` into a Maven aggregator with one application module;
+- suggests `<root-artifactId>-app` when `--module-name` is omitted;
+- does not create distributive, migrate Maven to corporate standards, modify Java logging, run cleanup, commit by default, or push.
+
 ## Modes
 
 - `analyze`: inspect an existing local project without modifications.
 - `dry-run`: clone, validate, select branch, and print the execution plan without migration edits.
 - `migrate`: execute the confirmed plugin plan.
+- `moduleize`: convert a new single-module Maven project into the `*-app` multi-module layout without corporate migration.
 - `sync`: synchronize GitVerse branches to Bitbucket only.
 - `apply`: run selected post-migration maintenance tasks on an existing local corporate branch.
 - `update`: merge a selected GitVerse branch into a selected existing corporate branch, then optionally run selected apply tasks.
@@ -130,6 +138,21 @@ python3.11 bootstrap.py update \
 
 If `--source-branch` is omitted, the tool fetches GitVerse, shows branches with commits not in the target branch, and asks which branch to merge. It never assumes `develop`, `module`, or any other source branch. If `--target-branch` is omitted, it asks for an existing corporate branch. `--yes` requires both `--source-branch` and `--target-branch`.
 
+Moduleize a new single-module Maven project:
+
+```bash
+python3.11 bootstrap.py moduleize \
+  --project /path/to/project
+```
+
+Optional arguments:
+
+- `--module-name`: application module name. When omitted, the tool suggests `<root-artifactId>-app`.
+- `--commit`: create `Create application Maven module` after successful conversion when changes exist.
+- `--yes`: skip confirmation and use the default module name when `--module-name` is omitted.
+
+`moduleize` requires a clean Git working tree, root `pom.xml`, root `src/`, and no existing `*-app` module. If an app module already exists, use `migrate` instead. It never pushes.
+
 Non-interactive migration:
 
 ```bash
@@ -149,6 +172,7 @@ Mode intent:
 
 - `sync`: only GitVerse to Bitbucket branch synchronization.
 - `migrate`: first-time corporate migration.
+- `moduleize`: new-project conversion from single-module Maven layout to an application module layout only.
 - `apply`: post-migration maintenance on an existing corporate branch.
 - `update`: post-migration integration from GitVerse into an existing corporate branch.
 
@@ -165,7 +189,7 @@ pom.xml
     src/
 ```
 
-The Skill never creates, renames, or moves application modules. If no `*-app` module exists, or more than one exists, migration is aborted.
+The `migrate` mode never creates, renames, or moves application modules. If no `*-app` module exists, or more than one exists, migration is aborted. For a new project that has not yet been converted, run `moduleize` only after explicit confirmation from the developer.
 
 ## Out Of Scope
 

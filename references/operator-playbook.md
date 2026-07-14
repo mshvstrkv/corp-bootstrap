@@ -7,11 +7,14 @@ Use this file for interaction design, confirmation, progress updates, failure re
 - "Can this be migrated?", "check readiness", "what will change": run `analyze`.
 - "Show me what would happen", "dry run": run `dry-run`.
 - "Migrate", "create the corp branch", or explicit confirmation after dry-run: run `migrate`.
+- "Convert this new single-module Maven project to multi-module", "create the app module for a new project": ask for explicit confirmation, then run `moduleize`.
 - "Update develop-corp from GitVerse", "pull new GitVerse changes into the corporate branch": run `update`.
 - "Apply logger/cleanup/Maven tasks to an existing branch without merging GitVerse": run `apply`.
 - "Upgrade Spring Boot", "upgrade Java", "modernize dependencies": explain that v2 is architected for those plugins, but they are not implemented unless registered in `standards/plugins.yaml`.
 
 Do not use `sync` for corporate branch updates. `sync` mirrors GitVerse branches to Bitbucket only. `update` is the only mode that merges a GitVerse branch into an existing corporate branch.
+
+If a project already contains exactly one `*-app` module, use `migrate`. If no `*-app` module exists, ask whether this is an existing project that must be fixed manually or a new project that should be converted using `moduleize`. Never run `moduleize` automatically without explicit confirmation.
 
 ## Conversation Flow
 
@@ -108,6 +111,30 @@ Will NOT:
   force-push
 ```
 
+For moduleize, show the plan before any file movement:
+
+```text
+Moduleization Plan
+Project:
+  /path/to/project
+New application module:
+  ai-payments-service-app
+Will move:
+  src/
+  -> ai-payments-service-app/src/
+Will create:
+  ai-payments-service-app/pom.xml
+Will update:
+  pom.xml
+Will NOT:
+  create distributive
+  migrate Maven to corporate standards
+  modify Java logging
+  run cleanup
+  push changes
+Proceed? [y/N]
+```
+
 ## Progress Updates
 
 Use short updates:
@@ -133,6 +160,14 @@ For update, add:
 - merging the selected source branch;
 - running selected post-merge tasks only after a clean merge;
 - committing and pushing only when requested.
+
+For moduleize, add:
+
+- validating clean local Git repository state;
+- suggesting the application module name when omitted;
+- showing the moduleization plan;
+- moving root `src/` into the new app module after confirmation;
+- committing only when requested.
 
 Do not imply source files were modified before the migration has been confirmed.
 
@@ -162,6 +197,14 @@ Validation failure:
 - if multiple `*-app` modules exist, resolve the project structure before rerunning;
 - recovery: fix layout or use a custom migration outside this Skill.
 
+Moduleize failure:
+
+- restore the original root `pom.xml`;
+- restore `src/` to the repository root when it was moved;
+- remove the partially created app module;
+- report rollback actions;
+- never push.
+
 Final push failure:
 
 - local workspace may contain completed migration edits and a commit;
@@ -183,6 +226,7 @@ Update merge conflict:
 - Preserve branch names exactly as Git reports them.
 - Explain what was modified and what was intentionally left untouched.
 - Never manually edit Maven files when using this Skill. Invoke `bootstrap.py`; Maven output must come from `corporate-reference/`. If generated Maven files are wrong, report a Skill bug.
+- For `moduleize`, invoke `bootstrap.py moduleize`; it is the only mode allowed to move root `src/` into a new app module, and it must not run corporate migration.
 - Never manually update corporate branches with `git pull origin develop`, `git merge origin/develop`, or `git push bitbucket develop:develop-corp`. Invoke `python3 bootstrap.py update ...`.
 - Always state the pushed corporate branch.
 - Mention the workspace path only when it was explicit or when the developer needs to inspect a failed migration.

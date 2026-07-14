@@ -9,6 +9,7 @@ from typing import Sequence
 class Mode(str, Enum):
     ANALYZE = "analyze"
     DRY_RUN = "dry-run"
+    MODULEIZE = "moduleize"
     MIGRATE = "migrate"
     SYNC = "sync"
     APPLY = "apply"

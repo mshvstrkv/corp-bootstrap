@@ -5,7 +5,7 @@ description: Official internal platform migration Skill for Java Spring Boot ser
 
 # Corp Bootstrap
 
-Use this Skill when a developer wants to analyze, sync branches, plan, dry-run, migrate, update an existing corporate branch from GitVerse, or apply post-migration maintenance tasks for a Java Spring Boot service.
+Use this Skill when a developer wants to analyze, sync branches, plan, dry-run, migrate, moduleize a new single-module Maven project, update an existing corporate branch from GitVerse, or apply post-migration maintenance tasks for a Java Spring Boot service.
 
 Current supported path: GitVerse to Sber corporate Bitbucket migration.
 
@@ -40,6 +40,7 @@ Maven migration is owned by the Python implementation:
 ```bash
 python3.11 bootstrap.py analyze --project /path/to/project
 python3.11 bootstrap.py sync
+python3.11 bootstrap.py moduleize --project /path/to/project
 python3.11 bootstrap.py apply --project /path/to/project --tasks logger
 python3.11 bootstrap.py update --project /path/to/project
 python3.11 bootstrap.py dry-run
@@ -109,6 +110,13 @@ For `migrate` and `dry-run`:
 
 For exploratory requests, run `analyze` first.
 
+If analysis or migration validation finds exactly one existing `*-app` module, use `migrate` for corporate migration. If no `*-app` module exists, ask the developer whether this is:
+
+1. an existing project that must be fixed manually, or
+2. a new project that should be converted using `moduleize`.
+
+Never run `moduleize` automatically without explicit confirmation.
+
 For `sync`:
 
 1. Ask for the GitVerse repository URL if missing.
@@ -135,6 +143,19 @@ For `apply`:
 
 `apply` must not clone GitVerse, synchronize branches, create a corporate branch, run unrequested tasks, commit without `--commit`, push without `--push`, or force-push.
 
+For `moduleize`:
+
+1. Require `--project`.
+2. Validate that `--project` exists, is a Git repository, has root `pom.xml`, has root `src/`, has no existing `*-app` module, has no target module directory, and has a clean working tree.
+3. If `--module-name` is omitted, suggest `<root-artifactId>-app` and ask for confirmation or another name.
+4. Show the moduleization plan and ask for confirmation unless `--yes`.
+5. Convert the root POM into an aggregator POM, preserving the Spring Boot parent, root coordinates, shared properties, and adding the new module.
+6. Create `<module-name>/pom.xml` with the root project as parent and transfer application dependencies, build, profiles, name, and description.
+7. Move root `src/` to `<module-name>/src/` without modifying source file contents.
+8. Commit only when `--commit` is passed and changes exist.
+
+`moduleize` must not create distributive, migrate Maven to corporate standards, modify Java logging, run cleanup, push changes, or run automatically when a project is missing an app module.
+
 For `update`:
 
 1. Require `--project`.
@@ -158,6 +179,7 @@ When a developer asks "обнови develop-corp из GitVerse", ask: "Из ка
 
 - `analyze`: inspect a local checkout only. No clone, commit, push, or file mutation.
 - `sync`: clone GitVerse and synchronize `refs/heads/*` to Bitbucket only. No corporate branch, migration edits, plugins, commit, or force-push.
+- `moduleize`: convert a new single-module Maven Spring Boot project into a root aggregator plus one application module. No corporate migration, distributive, logger migration, cleanup, or push.
 - `apply`: run selected post-migration tasks on an existing local corporate branch. No GitVerse clone, branch synchronization, corporate branch creation, unrequested tasks, commit, or push by default.
 - `update`: merge a selected GitVerse branch into a selected existing corporate branch, then optionally run selected apply tasks.
 - `dry-run`: clone, read branches, ask for primary and corporate branch names, validate, and print the execution plan. No push, migration edits, or commit.
@@ -167,6 +189,7 @@ Mode intent:
 
 - `sync`: only GitVerse to Bitbucket branch synchronization.
 - `migrate`: first-time corporate migration.
+- `moduleize`: new-project Maven module conversion only.
 - `apply`: post-migration maintenance on an existing corporate branch.
 - `update`: post-migration integration from GitVerse into an existing corporate branch.
 
@@ -194,6 +217,7 @@ Stop with a readable error when:
 - Git authentication, clone, checkout, remote configuration, push, or commit fails.
 - Expected layout is missing: root `pom.xml`, exactly one existing `*-app` module, `<module>/pom.xml`, or `<module>/src`.
 - No application module exists or multiple `*-app` modules exist.
+- `moduleize` is requested for a project with an existing `*-app` module, missing root `src/`, a target module directory that already exists, or a dirty working tree.
 - a POM is invalid XML.
 - the distributive POM template is invalid or is not a distributive module POM.
 - required Maven coordinates for generated distributive files cannot be resolved.

@@ -10,6 +10,7 @@ from pathlib import Path
 from apply import ApplyOptions, parse_tasks, render_apply_plan, run_apply, validate_apply
 from config import AppConfig, Mode
 from git_client import GitClient, GitError
+from moduleize import ModuleizeOptions, ModuleizeReport, ModuleizeRollbackError, confirm_module_name, confirm_moduleize, prepare_moduleize_plan, run_moduleize
 from planner import MigrationExecutionError, build_plan, execute_plugins
 from plugin_base import MigrationContext
 from plugin_registry import PluginRegistry, PluginRegistryError
@@ -78,6 +79,27 @@ def main(argv: list[str] | None = None) -> int:
             print(report.render())
             return 1 if isinstance(report, ConflictReport) else 0
 
+        if mode == Mode.MODULEIZE:
+            if args.project is None:
+                raise ValueError("--project is required for moduleize mode")
+            git = GitClient(logging.getLogger("corp-bootstrap.git"))
+            module_name = confirm_module_name(Path(args.project).resolve(), args.module_name, args.yes)
+            options = ModuleizeOptions(
+                project=Path(args.project).resolve(),
+                module_name=module_name,
+                commit=args.commit,
+                yes=args.yes,
+            )
+            plan = prepare_moduleize_plan(options, git)
+            confirm_moduleize(plan, args.yes)
+            try:
+                report = run_moduleize(options, git)
+            except ModuleizeRollbackError as exc:
+                print(ModuleizeReport(changed=False, rollback_actions=exc.rollback_actions).render())
+                return 1
+            print(report.render())
+            return 0
+
         config = collect_config(args, mode, standards.corporate_branch_suffix)
         context = build_context(config, standards)
         if mode == Mode.SYNC:
@@ -138,6 +160,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--corporate-branch", help="Corporate branch name to create from the primary development branch")
     parser.add_argument("--workspace", type=Path, help="Workspace used for clone operations")
     parser.add_argument("--project", type=Path, help="Existing project directory for analyze mode")
+    parser.add_argument("--module-name", help="Application module name for moduleize mode")
     parser.add_argument("--tasks", help="Comma-separated apply tasks: logger, cleanup, maven")
     parser.add_argument("--commit", action="store_true", help="Create an apply commit when changes exist")
     parser.add_argument("--push", action="store_true", help="Push the current apply branch after commit")
