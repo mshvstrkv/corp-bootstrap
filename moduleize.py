@@ -7,7 +7,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from git_client import GitClient
+from maven_reference import MavenTemplateValues, generate_root_pom, merge_business_dependencies, render_reference
 from utils.xml_utils import child_text, clone_element, find_child, local_name, parse_xml, qualify, set_child_text
+from utils.file_utils import write_text_if_changed
 from validation import ValidationError
 
 
@@ -240,3 +242,54 @@ def _validate_module_name(project: Path, module_name: str) -> None:
 
 def _existing_app_modules(project: Path) -> list[str]:
     return sorted(path.name for path in project.iterdir() if path.is_dir() and path.name.endswith("-app"))
+
+
+def needs_corporate_moduleization(project: Path) -> bool:
+    return (project / "pom.xml").is_file() and (project / "src").is_dir() and not _existing_app_modules(project)
+
+
+def corporate_moduleize_if_needed(project: Path, reference_dir: Path, template_values: dict) -> str | None:
+    if not needs_corporate_moduleization(project):
+        return None
+    return corporate_moduleize(project, reference_dir, template_values)
+
+
+def corporate_moduleize(project: Path, reference_dir: Path, template_values: dict) -> str:
+    root_pom = project / "pom.xml"
+    root_src = project / "src"
+    original_pom = root_pom.read_bytes()
+    root = parse_xml(root_pom).root
+    root_artifact = child_text(root, "artifactId")
+    if not root_artifact:
+        raise ValidationError("Project validation failed. Root artifactId is missing.")
+    app_module = f"{root_artifact}-app"
+    app_dir = project / app_module
+    app_pom = app_dir / "pom.xml"
+    app_src = app_dir / "src"
+    if app_dir.exists():
+        raise ValidationError(f"Project validation failed. Module directory already exists: {app_module}")
+
+    values = MavenTemplateValues(
+        {
+            "ROOT_ARTIFACT_ID": root_artifact,
+            "APP_MODULE": app_module,
+            "APP_ARTIFACT_ID": app_module,
+            "DESCRIPTION": child_text(root, "description") or root_artifact,
+            **{name: str(value) for name, value in template_values.items()},
+        }
+    )
+    try:
+        app_dir.mkdir()
+        app_rendered = render_reference(reference_dir / "app-pom.xml", values)
+        write_text_if_changed(app_pom, merge_business_dependencies(root_pom, app_rendered))
+        generate_root_pom(project, reference_dir, values)
+        shutil.move(str(root_src), str(app_src))
+        return app_module
+    except Exception:
+        if root_pom.exists():
+            root_pom.write_bytes(original_pom)
+        if app_src.exists() and not root_src.exists():
+            shutil.move(str(app_src), str(root_src))
+        if app_dir.exists():
+            shutil.rmtree(app_dir)
+        raise

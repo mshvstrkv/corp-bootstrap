@@ -39,6 +39,7 @@ class FakeUpdateGit:
         self.merge_result = MergeResult(ok=True, conflicts=[])
         self.changed = False
         self.root_src_files: list[str] = []
+        self.app_module_exists_at_merge = False
 
     def is_git_repository(self, repo: Path) -> bool:
         return True
@@ -65,6 +66,7 @@ class FakeUpdateGit:
         self.checked_out.append((branch, remote))
 
     def merge(self, repo: Path, source_ref: str, message: str) -> MergeResult:
+        self.app_module_exists_at_merge = (repo / "service-app").exists()
         self.merged.append((source_ref, message))
         return self.merge_result
 
@@ -182,6 +184,19 @@ class UpdateModeTest(unittest.TestCase):
 
             self.assertEqual(git.applied_tasks, [["logger", "cleanup"]])
 
+    def test_update_moduleizes_single_module_project_before_apply(self) -> None:
+        with single_module_project() as project:
+            git = FakeUpdateGit()
+
+            run_update(update_plan(project, tasks=["logger"]), git, load_standards(), skill_root())
+
+            self.assertTrue(git.app_module_exists_at_merge)
+            self.assertFalse((project / "src").exists())
+            source = project / "service-app" / "src" / "main" / "java" / "com" / "example" / "Service.java"
+            self.assertTrue(source.is_file())
+            self.assertIn("@Slf4j", source.read_text(encoding="utf-8"))
+            self.assertIn("<artifactId>service-app</artifactId>", (project / "service-app" / "pom.xml").read_text(encoding="utf-8"))
+
     def test_tasks_logger_runs_logger_only(self) -> None:
         self.assertEqual(parse_update_tasks("logger"), ["logger"])
 
@@ -244,6 +259,63 @@ class temp_project:
 
     def __exit__(self, exc_type, exc, tb) -> None:
         self.temp.cleanup()
+
+
+class single_module_project:
+    def __enter__(self) -> Path:
+        self.temp = tempfile.TemporaryDirectory()
+        self.project = Path(self.temp.name)
+        (self.project / "pom.xml").write_text(SINGLE_MODULE_POM, encoding="utf-8")
+        source_dir = self.project / "src" / "main" / "java" / "com" / "example"
+        source_dir.mkdir(parents=True)
+        (source_dir / "Service.java").write_text(LOGGER_SOURCE, encoding="utf-8")
+        return self.project
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.temp.cleanup()
+
+
+def skill_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+SINGLE_MODULE_POM = """<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>3.3.5</version>
+        <relativePath/>
+    </parent>
+    <artifactId>service</artifactId>
+    <description>Service</description>
+    <properties>
+        <java.version>17</java.version>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
+        </dependency>
+    </dependencies>
+</project>
+"""
+
+
+LOGGER_SOURCE = """package com.example;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+public class Service {
+    private static final Logger log = LoggerFactory.getLogger(Service.class);
+
+    public void run() {
+        log.info("run");
+    }
+}
+"""
 
 
 if __name__ == "__main__":

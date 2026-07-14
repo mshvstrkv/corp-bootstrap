@@ -5,9 +5,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from moduleize import ModuleizeOptions, ModuleizeRollbackError, default_module_name, prepare_moduleize_plan, run_moduleize
+from config import ProjectLayout
+from moduleize import ModuleizeOptions, ModuleizeRollbackError, corporate_moduleize_if_needed, default_module_name, prepare_moduleize_plan, run_moduleize
+from standard_loader import load_standards
 from utils.xml_utils import child_text, find_child, parse_xml
-from validation import ValidationError
+from validation import ValidationError, validate_project
 
 
 POM = """<?xml version="1.0" encoding="UTF-8"?>
@@ -196,6 +198,22 @@ class ModuleizeTest(unittest.TestCase):
             run_moduleize(ModuleizeOptions(project=root, commit=True), git)
             self.assertEqual(git.commits, [(root.resolve(), "Create application Maven module")])
 
+    def test_corporate_moduleize_uses_reference_poms_and_moves_src(self) -> None:
+        with project_fixture() as root:
+            standards = load_standards()
+
+            app_module = corporate_moduleize_if_needed(root, skill_root() / "corporate-reference", standards.maven_template_values)
+
+            self.assertEqual(app_module, "ai-payments-service-app")
+            self.assertEqual(validate_project(ProjectLayout(root)), "ai-payments-service-app")
+            self.assertFalse((root / "src").exists())
+            self.assertTrue((root / "ai-payments-service-app" / "src" / "main" / "java" / "Example.java").is_file())
+            self.assertIn("<module>distributive</module>", (root / "pom.xml").read_text(encoding="utf-8"))
+            app_pom = (root / "ai-payments-service-app" / "pom.xml").read_text(encoding="utf-8")
+            self.assertIn("<artifactId>ai-payments-service-app</artifactId>", app_pom)
+            self.assertIn("<artifactId>spring-boot-starter-web</artifactId>", app_pom)
+            self.assertIn("<artifactId>logger</artifactId>", app_pom)
+
 
 class project_fixture:
     def __enter__(self) -> Path:
@@ -215,6 +233,10 @@ class project_fixture:
 
     def __exit__(self, *args) -> None:
         self.tmp.cleanup()
+
+
+def skill_root() -> Path:
+    return Path(__file__).resolve().parents[1]
 
 
 if __name__ == "__main__":

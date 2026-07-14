@@ -7,6 +7,7 @@ from pathlib import Path
 from apply import parse_tasks, run_apply_tasks
 from config import ProjectLayout
 from git_client import GitError
+from moduleize import corporate_moduleize_if_needed
 from standard_loader import Standards
 from validation import ValidationError, validate_project
 
@@ -225,6 +226,7 @@ def prepare_update_plan(options: UpdateOptions, git, standards: Standards) -> Up
 
 def run_update(plan: UpdatePlan, git, standards: Standards, skill_root: Path) -> UpdateReport | ConflictReport:
     git.checkout_target_branch(plan.project, plan.target_branch, plan.target_remote)
+    corporate_moduleize_if_needed(plan.project, skill_root / "corporate-reference", standards.maven_template_values)
     merge_result = git.merge(
         plan.project,
         plan.source_ref,
