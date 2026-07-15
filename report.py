@@ -13,7 +13,10 @@ class MigrationReport:
     errors: list[str] = field(default_factory=list)
 
     def add(self, result: OperationResult) -> None:
-        suffix = f": {result.message}" if result.message else ""
+        if result.message.startswith("\n"):
+            suffix = f":{result.message}"
+        else:
+            suffix = f": {result.message}" if result.message else ""
         self.completed.append(f"{result.name}{suffix}")
         self.warnings.extend(result.warnings)
 
